@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>同学快跑 - 逃离教导主任！</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Microsoft YaHei', 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 5px solid #FFD700;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 50%, #98D8C8 100%);
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .score-display {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+        
+        .coin-display {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: #FFD700;
+            font-size: 22px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+        
+        .distance-display {
+            position: absolute;
+            top: 60px;
+            left: 15px;
+            color: #4CAF50;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px 12px;
+            border-radius: 15px;
+        }
+        
+        .boss-warning {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #FF0000;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            animation: warningPulse 0.5s infinite;
+            display: none;
+        }
+        
+        @keyframes warningPulse {
+            0%, 100% { transform: translateX(-50%) scale(1); opacity: 1; }
+            50% { transform: translateX(-50%) scale(1.1); opacity: 0.7; }
+        }
+        
+        .powerup-display {
+            position: absolute;
+            top: 60px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .powerup-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            border: 2px solid white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            opacity: 0.3;
+            transition: all 0.3s;
+        }
+        
+        .powerup-icon.active {
+            opacity: 1;
+            animation: powerupGlow 1s infinite;
+        }
+        
+        @keyframes powerupGlow {
+            0%, 100% { box-shadow: 0 0 10px currentColor; transform: scale(1); }
+            50% { box-shadow: 0 0 20px currentColor; transform: scale(1.1); }
+        }
+        
+        .powerup-sprint { background: linear-gradient(135deg, #FF5722, #FFAB91); color: white; }
+        .powerup-shield { background: linear-gradient(135deg, #2196F3, #90CAF9); color: white; }
+        .powerup-magnet { background: linear-gradient(135deg, #9C27B0, #CE93D8); color: white; }
+        .powerup-energy { background: linear-gradient(135deg, #4CAF50, #A5D6A7); color: white; }
+        
+        .mission-display {
+            position: absolute;
+            top: 100px;
+            left: 15px;
+            background: rgba(255, 193, 7, 0.9);
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 250px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .mission-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #E65100;
+        }
+        
+        .boss-hp-bar {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 25px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #FF0000;
+            display: none;
+        }
+        
+        .boss-hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FF0000, #FF5722);
+            transition: width 0.3s;
+        }
+        
+        .boss-hp-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        #startScreen, #gameOverScreen, #pauseScreen, #victoryScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            pointer-events: auto;
+            overflow-y: auto;
+            padding: 20px 0;
+        }
+        
+        #startScreen {
+            padding-top: 30px;
+        }
+        
+        .start-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            padding: 0 20px;
+        }
+        
+        #gameOverScreen, #pauseScreen, #victoryScreen {
+            display: none;
+        }
+        
+        h1 {
+            color: #FFD700;
+            font-size: 42px;
+            margin-bottom: 8px;
+            text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.8);
+            animation: titleBounce 1s ease-in-out;
+        }
+        
+        @keyframes titleBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .subtitle {
+            color: #FF5722;
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .btn {
+            padding: 12px 40px;
+            font-size: 20px;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
+            border: none;
+            border-radius: 50px;
+            color: #333;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 8px;
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+        }
+        
+        .btn:hover {
+            transform: scale(1.1) translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.6);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #4CAF50 0%, #81C784 100%);
+            color: white;
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.6);
+        }
+        
+        .character-select {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 500px;
+        }
+        
+        .character-option {
+            width: 80px;
+            height: 95px;
+            border-radius: 12px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+        }
+        
+        .character-option:hover {
+            transform: scale(1.1) translateY(-5px);
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .character-option.selected {
+            border-color: #FFD700;
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        
+        .character-option.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .character-icon {
+            font-size: 38px;
+            margin-bottom: 3px;
+        }
+        
+        .character-name {
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .character-price {
+            color: #FFD700;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+        
+        .controls {
+            color: white;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.8;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 15px;
+            border-radius: 12px;
+        }
+        
+        .controls p {
+            margin: 5px 0;
+        }
+        
+        .key {
+            display: inline-block;
+            padding: 4px 8px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 6px;
+            margin: 0 2px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            font-size: 12px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+            color: white;
+            font-size: 18px;
+            text-align: center;
+        }
+        
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        
+        .achievements-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            max-width: 700px;
+        }
+        
+        .achievement-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: white;
+            font-size: 13px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .achievement-item.unlocked {
+            border-color: #FFD700;
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .story-text {
+            color: white;
+            font-size: 14px;
+            max-width: 550px;
+            text-align: center;
+            line-height: 1.6;
+            margin: 10px 0;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            border-left: 4px solid #FFD700;
+        }
+        
+        .difficulty-select {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            justify-content: center;
+        }
+        
+        .difficulty-option {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .difficulty-option:hover {
+            transform: scale(1.05);
+        }
+        
+        .difficulty-option.selected {
+            border-color: #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        
+        .difficulty-easy { background: linear-gradient(135deg, #4CAF50, #81C784); }
+        .difficulty-normal { background: linear-gradient(135deg, #FF9800, #FFB74D); }
+        .difficulty-hard { background: linear-gradient(135deg, #F44336, #EF5350); }
+        
+        .difficulty-info {
+            color: #CCC;
+            font-size: 11px;
+            margin-top: 3px;
+            text-align: center;
+        }
+        
+        .section-title {
+            color: #FFD700;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 12px 0 8px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .character-help {
+            color: #AAA;
+            font-size: 11px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        .current-selection {
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 8px 15px;
+            margin: 8px 0;
+            color: white;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        <div id="ui">
+            <div class="score-display">🏃 距离: <span id="score">0</span>m</div>
+            <div class="coin-display">📚 作业本: <span id="coins">0</span></div>
+            <div class="distance-display">📏 领先: <span id="bossDistance">100</span>m</div>
+            <div class="boss-warning" id="bossWarning">⚠️ 教导主任追来了！⚠️</div>
+            <div class="boss-hp-bar" id="bossHpBar">
+                <div class="boss-hp-fill" id="bossHpFill" style="width: 100%"></div>
+                <div class="boss-hp-text">👨‍🏫 教导主任怒气值</div>
+            </div>
+            <div class="powerup-display">
+                <div class="powerup-icon powerup-sprint" id="sprintIcon">⚡</div>
+                <div class="powerup-icon powerup-shield" id="shieldIcon">🛡️</div>
+                <div class="powerup-icon powerup-magnet" id="magnetIcon">🧲</div>
+                <div class="powerup-icon powerup-energy" id="energyIcon">🥤</div>
+            </div>
+            <div class="mission-display" id="missionDisplay" style="display: none;">
+                <div class="mission-title">📋 当前任务</div>
+                <div id="missionText">收集10本作业本</div>
+            </div>
+        </div>
+        <div id="startScreen">
+            <div class="start-content">
+                <h1>🏃 同学快跑！</h1>
+                <div class="subtitle">逃离教导主任的追捕！</div>
+                <div class="story-text">
+                    上课铃响了，你却还在操场上玩耍！<br>
+                    教导主任发现了你，正在快速追来！<br>
+                    快跑！收集作业本证明你是好学生，<br>
+                    使用道具甩开教导主任！
+                </div>
+                
+                <div class="section-title">🎮 选择难度</div>
+                <div class="difficulty-select" id="difficultySelect">
+                    <div class="difficulty-option difficulty-easy selected" data-difficulty="easy">
+                        简单
+                        <div class="difficulty-info">主任跑得慢，适合新手</div>
+                    </div>
+                    <div class="difficulty-option difficulty-normal" data-difficulty="normal">
+                        普通
+                        <div class="difficulty-info">正常速度，标准体验</div>
+                    </div>
+                    <div class="difficulty-option difficulty-hard" data-difficulty="hard">
+                        困难
+                        <div class="difficulty-info">主任狂暴，挑战极限</div>
+                    </div>
+                </div>
+                
+                <div class="section-title">👤 选择角色（点击切换）</div>
+                <div class="character-select" id="characterSelect">
+                    <div class="character-option selected" data-character="student1" data-price="0">
+                        <div class="character-icon">👦</div>
+                        <div class="character-name">小明</div>
+                    </div>
+                    <div class="character-option" data-character="student2" data-price="50">
+                        <div class="character-icon">👧</div>
+                        <div class="character-name">小红</div>
+                        <div class="character-price">50📚</div>
+                    </div>
+                    <div class="character-option" data-character="athlete" data-price="100">
+                        <div class="character-icon">🏃</div>
+                        <div class="character-name">体育委员</div>
+                        <div class="character-price">100📚</div>
+                    </div>
+                    <div class="character-option" data-character="nerd" data-price="150">
+                        <div class="character-icon">🤓</div>
+                        <div class="character-name">学霸</div>
+                        <div class="character-price">150📚</div>
+                    </div>
+                    <div class="character-option" data-character="rebel" data-price="300">
+                        <div class="character-icon">😎</div>
+                        <div class="character-name">校霸</div>
+                        <div class="character-price">300📚</div>
+                    </div>
+                </div>
+                <div class="current-selection" id="currentSelection">
+                    当前选择：简单难度 | 小明
+                </div>
+                <button class="btn" onclick="game.start()">开始逃跑！</button>
+                <button class="btn btn-secondary" onclick="game.showTutorial()">游戏教程</button>
+                <div class="controls">
+                    <p><span class="key">←</span> <span class="key">→</span> 或 <span class="key">A</span> <span class="key">D</span> 切换跑道</p>
+                    <p><span class="key">↑</span> <span class="key">W</span> <span class="key">空格</span> 跳跃躲避</p>
+                    <p><span class="key">↓</span> <span class="key">S</span> 滑行穿过 | <span class="key">P</span> 暂停</p>
+                </div>
+                <div class="character-help">
+                    💡 提示：点击上方角色头像可切换角色，未解锁的角色需要收集足够的作业本才能使用
+                </div>
+            </div>
+        </div>
+        <div id="pauseScreen">
+            <h1>⏸️ 暂停</h1>
+            <p style="color: white; font-size: 18px; margin-bottom: 20px;">教导主任还在追你！别停太久！</p>
+            <button class="btn" onclick="game.resume()">继续逃跑</button>
+            <button class="btn btn-secondary" onclick="game.restart()">重新开始</button>
+        </div>
+        <div id="gameOverScreen">
+            <h1>😱 被抓住了！</h1>
+            <div class="subtitle" id="caughtText">教导主任："来我办公室一趟！"</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div>逃跑距离</div>
+                    <div class="stat-value"><span id="finalScore">0</span>m</div>
+                </div>
+                <div class="stat-item">
+                    <div>收集作业本</div>
+                    <div class="stat-value"><span id="finalCoins">0</span></div>
+                </div>
+                <div class="stat-item">
+                    <div>最高连击</div>
+                    <div class="stat-value"><span id="finalCombo">0</span></div>
+                </div>
+                <div class="stat-item">
+                    <div>躲避次数</div>
+                    <div class="stat-value"><span id="finalDodges">0</span></div>
+                </div>
+            </div>
+            <div class="achievements-list" id="achievementsList"></div>
+            <button class="btn" onclick="game.restart()">再次逃跑</button>
+            <button class="btn btn-secondary" onclick="game.backToMenu()">返回主菜单</button>
+        </div>
+        <div id="victoryScreen">
+            <h1>🎉 逃脱成功！</h1>
+            <div class="subtitle">你成功甩掉了教导主任！</div>
+            <div class="story-text" id="victoryText">
+                恭喜你！你成功逃回了教室，<br>
+                并且把作业本都交齐了！<br>
+                教导主任只能无奈地离开...
+            </div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div>总距离</div>
+                    <div class="stat-value"><span id="victoryScore">0</span>m</div>
+                </div>
+                <div class="stat-item">
+                    <div>作业本</div>
+                    <div class="stat-value"><span id="victoryCoins">0</span></div>
+                </div>
+            </div>
+            <button class="btn" onclick="game.restart()">再玩一次</button>
+            <button class="btn btn-secondary" onclick="game.backToMenu()">返回主菜单</button>
+        </div>
+    </div>
+    <script>
+class SchoolEscapeGame {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+        
+        this.gameState = 'start';
+        this.score = 0;
+        this.coins = 0;
+        this.totalCoins = parseInt(localStorage.getItem('schoolCoins')) || 0;
+        
+        this.difficulty = localStorage.getItem('gameDifficulty') || 'easy';
+        this.difficultySettings = {
+            easy: { baseSpeed: 5, maxSpeed: 14, bossSpeed: 0.08, bossMinDist: 40, obstacleRate: 1500, coinRate: 800 },
+            normal: { baseSpeed: 6, maxSpeed: 18, bossSpeed: 0.12, bossMinDist: 30, obstacleRate: 1200, coinRate: 600 },
+            hard: { baseSpeed: 7, maxSpeed: 22, bossSpeed: 0.18, bossMinDist: 20, obstacleRate: 900, coinRate: 500 }
+        };
+        const settings = this.difficultySettings[this.difficulty];
+        this.speed = settings.baseSpeed;
+        this.baseSpeed = settings.baseSpeed;
+        this.maxSpeed = settings.maxSpeed;
+        
+        this.boss = {
+            active: false,
+            distance: 150,
+            minDistance: settings.bossMinDist,
+            anger: 0,
+            maxAnger: 100,
+            y: -200,
+            targetY: 100,
+            state: 'chase',
+            speed: settings.bossSpeed
+        };
+        
+        this.dodgeCount = 0;
+        this.combo = 0;
+        this.maxCombo = 0;
+        
+        this.lanes = [200, 500, 800];
+        this.currentLane = 1;
+        this.laneSwitchSpeed = 0.25;
+        this.playerX = this.lanes[this.currentLane];
+        this.targetX = this.playerX;
+        
+        this.selectedCharacter = localStorage.getItem('selectedStudent') || 'student1';
+        this.unlockedCharacters = JSON.parse(localStorage.getItem('unlockedStudents')) || ['student1'];
+        
+        this.player = {
+            y: 420,
+            width: 45,
+            height: 70,
+            jumping: false,
+            jumpHeight: 0,
+            jumpVelocity: 0,
+            sliding: false,
+            slideTimer: 0,
+            animFrame: 0,
+            stamina: 100,
+            maxStamina: 100
+        };
+        
+        this.powerups = {
+            sprint: { active: false, time: 0, duration: 180 },
+            shield: { active: false, time: 0, duration: 240 },
+            magnet: { active: false, time: 0, duration: 300 },
+            energy: { active: false, time: 0, duration: 1 }
+        };
+        
+        this.obstacles = [];
+        this.coinItems = [];
+        this.powerupItems = [];
+        this.particles = [];
+        this.floatingTexts = [];
+        this.decorations = [];
+        this.groundOffset = 0;
+        
+        this.keys = {};
+        this.lastObstacleTime = 0;
+        this.lastCoinTime = 0;
+        this.lastPowerupTime = 0;
+        this.lastDecorationTime = 0;
+        
+        this.mission = {
+            active: false,
+            type: 'collect',
+            target: 10,
+            current: 0,
+            reward: 20
+        };
+        
+        this.achievements = [
+            { id: 'first_escape', name: '初次逃亡', desc: '完成第一次逃跑', unlocked: false },
+            { id: 'book_worm', name: '好学生', desc: '收集50本作业本', unlocked: false },
+            { id: 'marathon', name: '马拉松选手', desc: '跑完1000米', unlocked: false },
+            { id: 'dodge_master', name: '躲避大师', desc: '成功躲避100次', unlocked: false },
+            { id: 'combo_king', name: '连击王', desc: '达到20连击', unlocked: false },
+            { id: 'boss_survivor', name: '主任克星', desc: '在BOSS追逐下存活30秒', unlocked: false },
+            { id: 'perfect_run', name: '完美逃亡', desc: '不碰撞跑完500米', unlocked: false },
+            { id: 'rich_kid', name: '土豪学生', desc: '累计拥有500本作业本', unlocked: false }
+        ];
+        
+        this.loadAchievements();
+        this.setupCharacterSelect();
+        this.setupEventListeners();
+        this.gameLoop();
+    }
+    
+    loadAchievements() {
+        const saved = localStorage.getItem('schoolAchievements');
+        if (saved) {
+            const savedData = JSON.parse(saved);
+            this.achievements.forEach(ach => {
+                if (savedData[ach.id]) ach.unlocked = savedData[ach.id];
+            });
+        }
+    }
+    
+    saveAchievements() {
+        const saveData = {};
+        this.achievements.forEach(ach => {
+            saveData[ach.id] = ach.unlocked;
+        });
+        localStorage.setItem('schoolAchievements', JSON.stringify(saveData));
+    }
+    
+    checkAchievements() {
+        let newUnlock = false;
+        const checks = {
+            first_escape: () => this.score > 0,
+            book_worm: () => this.coins >= 50,
+            marathon: () => this.score >= 1000,
+            dodge_master: () => this.dodgeCount >= 100,
+            combo_king: () => this.maxCombo >= 20,
+            boss_survivor: () => this.boss.active && this.boss.anger > 0,
+            perfect_run: () => this.score >= 500 && this.dodgeCount > 0,
+            rich_kid: () => this.totalCoins >= 500
+        };
+        
+        this.achievements.forEach(ach => {
+            if (!ach.unlocked && checks[ach.id] && checks[ach.id]()) {
+                ach.unlocked = true;
+                newUnlock = true;
+                this.showFloatingText(this.width/2, this.height/2, `🏆 ${ach.name}!`, '#FFD700', 36);
+            }
+        });
+        
+        if (newUnlock) this.saveAchievements();
+    }
+    
+    setupCharacterSelect() {
+        const options = document.querySelectorAll('.character-option');
+        options.forEach(option => {
+            const character = option.dataset.character;
+            const price = parseInt(option.dataset.price);
+            
+            if (!this.unlockedCharacters.includes(character)) {
+                if (this.totalCoins >= price) {
+                    option.addEventListener('click', () => {
+                        if (confirm(`解锁 ${option.querySelector('.character-name').textContent} 需要 ${price} 本作业本，确认吗？`)) {
+                            this.totalCoins -= price;
+                            this.unlockedCharacters.push(character);
+                            localStorage.setItem('schoolCoins', this.totalCoins);
+                            localStorage.setItem('unlockedStudents', JSON.stringify(this.unlockedCharacters));
+                            option.classList.remove('locked');
+                            this.selectCharacter(character);
+                            this.updateSelectionDisplay();
+                        }
+                    });
+                } else {
+                    option.classList.add('locked');
+                }
+            } else {
+                option.addEventListener('click', () => {
+                    this.selectCharacter(character);
+                    this.updateSelectionDisplay();
+                });
+            }
+            
+            if (character === this.selectedCharacter) {
+                option.classList.add('selected');
+            }
+        });
+        
+        this.setupDifficultySelect();
+    }
+    
+    setupDifficultySelect() {
+        const options = document.querySelectorAll('.difficulty-option');
+        options.forEach(option => {
+            option.addEventListener('click', () => {
+                const difficulty = option.dataset.difficulty;
+                this.difficulty = difficulty;
+                localStorage.setItem('gameDifficulty', difficulty);
+                
+                document.querySelectorAll('.difficulty-option').forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                
+                const settings = this.difficultySettings[difficulty];
+                this.baseSpeed = settings.baseSpeed;
+                this.maxSpeed = settings.maxSpeed;
+                
+                this.updateSelectionDisplay();
+            });
+            
+            if (option.dataset.difficulty === this.difficulty) {
+                option.classList.add('selected');
+            }
+        });
+    }
+    
+    updateSelectionDisplay() {
+        const difficultyNames = { easy: '简单', normal: '普通', hard: '困难' };
+        const characterNames = {
+            student1: '小明', student2: '小红', athlete: '体育委员',
+            nerd: '学霸', rebel: '校霸'
+        };
+        document.getElementById('currentSelection').textContent = 
+            `当前选择：${difficultyNames[this.difficulty]}难度 | ${characterNames[this.selectedCharacter]}`;
+    }
+    
+    selectCharacter(character) {
+        if (!this.unlockedCharacters.includes(character)) return;
+        this.selectedCharacter = character;
+        localStorage.setItem('selectedStudent', character);
+        document.querySelectorAll('.character-option').forEach(opt => opt.classList.remove('selected'));
+        document.querySelector(`[data-character="${character}"]`).classList.add('selected');
+    }
+    
+    getCharacterStats() {
+        const stats = {
+            student1: { speed: 1, jump: 1, stamina: 1 },
+            student2: { speed: 1.1, jump: 1, stamina: 0.9 },
+            athlete: { speed: 1.2, jump: 1.1, stamina: 1.2 },
+            nerd: { speed: 0.9, jump: 0.9, stamina: 1.3 },
+            rebel: { speed: 1.1, jump: 1.2, stamina: 1 }
+        };
+        return stats[this.selectedCharacter] || stats.student1;
+    }
+    
+    setupEventListeners() {
+        document.addEventListener('keydown', (e) => {
+            this.keys[e.key] = true;
+            this.handleInput(e.key);
+        });
+        document.addEventListener('keyup', (e) => {
+            this.keys[e.key] = false;
+        });
+    }
+    
+    handleInput(key) {
+        if (key === 'p' || key === 'P') {
+            if (this.gameState === 'playing') this.pause();
+            else if (this.gameState === 'paused') this.resume();
+            return;
+        }
+        if (this.gameState !== 'playing') return;
+        
+        switch(key) {
+            case 'ArrowLeft':
+            case 'a':
+            case 'A':
+                if (this.currentLane > 0) {
+                    this.currentLane--;
+                    this.targetX = this.lanes[this.currentLane];
+                }
+                break;
+            case 'ArrowRight':
+            case 'd':
+            case 'D':
+                if (this.currentLane < 2) {
+                    this.currentLane++;
+                    this.targetX = this.lanes[this.currentLane];
+                }
+                break;
+            case 'ArrowUp':
+            case 'w':
+            case 'W':
+            case ' ':
+                this.jump();
+                break;
+            case 'ArrowDown':
+            case 's':
+            case 'S':
+                this.slide();
+                break;
+        }
+    }
+    
+    jump() {
+        if (!this.player.jumping && !this.player.sliding && this.player.stamina >= 15) {
+            this.player.jumping = true;
+            this.player.jumpVelocity = 15 * this.getCharacterStats().jump;
+            this.player.stamina -= 15;
+            this.createParticles(this.playerX, this.player.y, 5, '#FFF');
+        }
+    }
+    
+    slide() {
+        if (!this.player.jumping && !this.player.sliding && this.player.stamina >= 10) {
+            this.player.sliding = true;
+            this.player.slideTimer = 25;
+            this.player.stamina -= 10;
+        }
+    }
+    
+    start() {
+        document.getElementById('startScreen').style.display = 'none';
+        this.gameState = 'playing';
+        this.reset();
+        this.generateMission();
+    }
+    
+    pause() {
+        this.gameState = 'paused';
+        document.getElementById('pauseScreen').style.display = 'flex';
+    }
+    
+    resume() {
+        document.getElementById('pauseScreen').style.display = 'none';
+        this.gameState = 'playing';
+    }
+    
+    restart() {
+        document.getElementById('gameOverScreen').style.display = 'none';
+        document.getElementById('victoryScreen').style.display = 'none';
+        document.getElementById('pauseScreen').style.display = 'none';
+        this.gameState = 'playing';
+        this.reset();
+        this.generateMission();
+    }
+    
+    backToMenu() {
+        document.getElementById('gameOverScreen').style.display = 'none';
+        document.getElementById('victoryScreen').style.display = 'none';
+        document.getElementById('startScreen').style.display = 'flex';
+        this.gameState = 'start';
+        this.reset();
+    }
+    
+    reset() {
+        const settings = this.difficultySettings[this.difficulty];
+        this.score = 0;
+        this.coins = 0;
+        this.speed = settings.baseSpeed;
+        this.currentLane = 1;
+        this.playerX = this.lanes[this.currentLane];
+        this.targetX = this.playerX;
+        this.player.jumping = false;
+        this.player.jumpHeight = 0;
+        this.player.sliding = false;
+        this.player.stamina = this.player.maxStamina;
+        this.player.animFrame = 0;
+        this.boss = {
+            active: false,
+            distance: 150,
+            minDistance: settings.bossMinDist,
+            anger: 0,
+            maxAnger: 100,
+            y: -200,
+            targetY: 100,
+            state: 'chase',
+            speed: settings.bossSpeed
+        };
+        this.dodgeCount = 0;
+        this.combo = 0;
+        this.maxCombo = 0;
+        this.obstacles = [];
+        this.coinItems = [];
+        this.powerupItems = [];
+        this.particles = [];
+        this.floatingTexts = [];
+        this.decorations = [];
+        
+        Object.keys(this.powerups).forEach(key => {
+            this.powerups[key].active = false;
+            this.powerups[key].time = 0;
+        });
+        
+        this.updateUI();
+        this.updatePowerupUI();
+        document.getElementById('bossWarning').style.display = 'none';
+        document.getElementById('bossHpBar').style.display = 'none';
+        document.getElementById('missionDisplay').style.display = 'none';
+    }
+    
+    generateMission() {
+        const missions = [
+            { type: 'collect', text: '收集10本作业本', target: 10, reward: 20 },
+            { type: 'distance', text: '跑完300米', target: 300, reward: 30 },
+            { type: 'combo', text: '达到10连击', target: 10, reward: 25 }
+        ];
+        this.mission = {...missions[Math.floor(Math.random() * missions.length)], current: 0};
+        document.getElementById('missionText').textContent = this.mission.text;
+        document.getElementById('missionDisplay').style.display = 'block';
+    }
+    
+    checkMission() {
+        if (!this.mission.active) return;
+        let completed = false;
+        if (this.mission.type === 'collect' && this.coins >= this.mission.target) completed = true;
+        if (this.mission.type === 'distance' && this.score >= this.mission.target) completed = true;
+        if (this.mission.type === 'combo' && this.maxCombo >= this.mission.target) completed = true;
+        
+        if (completed) {
+            this.mission.active = false;
+            this.totalCoins += this.mission.reward;
+            localStorage.setItem('schoolCoins', this.totalCoins);
+            this.showFloatingText(this.width/2, this.height/2, `任务完成！+${this.mission.reward}📚`, '#4CAF50', 28);
+            setTimeout(() => this.generateMission(), 2000);
+        }
+    }
+    
+    gameOver() {
+        this.gameState = 'gameover';
+        this.totalCoins += this.coins;
+        localStorage.setItem('schoolCoins', this.totalCoins);
+        
+        document.getElementById('finalScore').textContent = Math.floor(this.score);
+        document.getElementById('finalCoins').textContent = this.coins;
+        document.getElementById('finalCombo').textContent = this.maxCombo;
+        document.getElementById('finalDodges').textContent = this.dodgeCount;
+        
+        const texts = [
+            '"来我办公室一趟！"',
+            '"叫你家长来！"',
+            '"这节课站着上！"',
+            '"作业翻倍！"'
+        ];
+        document.getElementById('caughtText').textContent = texts[Math.floor(Math.random() * texts.length)];
+        
+        this.checkAchievements();
+        this.showAchievements();
+        document.getElementById('gameOverScreen').style.display = 'flex';
+    }
+    
+    victory() {
+        this.gameState = 'victory';
+        this.totalCoins += this.coins + 50;
+        localStorage.setItem('schoolCoins', this.totalCoins);
+        
+        document.getElementById('victoryScore').textContent = Math.floor(this.score);
+        document.getElementById('victoryCoins').textContent = this.coins;
+        document.getElementById('victoryScreen').style.display = 'flex';
+    }
+    
+    showAchievements() {
+        const container = document.getElementById('achievementsList');
+        container.innerHTML = '';
+        this.achievements.filter(ach => ach.unlocked).forEach(ach => {
+            const div = document.createElement('div');
+            div.className = 'achievement-item unlocked';
+            div.textContent = `🏆 ${ach.name}`;
+            container.appendChild(div);
+        });
+    }
+    
+    showTutorial() {
+        const difficultyNames = { easy: '简单', normal: '普通', hard: '困难' };
+        alert(`📚 游戏教程 📚
+
+🏃 你是迟到的学生，教导主任正在追你！
+
+🎮 操作方式：
+• ← → 或 A D：左右切换跑道
+• ↑ 或 W 或 空格：跳跃躲避障碍
+• ↓ 或 S：滑行穿过障碍
+• P：暂停游戏
+
+🎯 难度选择（在主界面点击选择）：
+• 简单：主任跑得慢，适合新手练习
+• 普通：正常速度，标准游戏体验
+• 困难：主任狂暴，障碍物密集，挑战极限！
+
+👤 角色选择（点击角色头像切换）：
+• 小明：平衡型（免费）
+• 小红：速度快（50作业本解锁）
+• 体育委员：速度快、体力高（100作业本解锁）
+• 学霸：体力高（150作业本解锁）
+• 校霸：跳跃高（300作业本解锁）
+
+📖 收集作业本证明你是好学生！
+⚡ 使用道具加速甩开主任！
+🎯 完成任务获得额外奖励！
+
+⚠️ 注意：
+• 撞到障碍物会减速，主任会追上来！
+• 体力不足时无法跳跃或滑行
+• 收集能量饮料恢复体力
+• 难度越高，主任追得越紧！
+
+祝你好运，别被抓住！😉`);
+    }
+    
+    update() {
+        if (this.gameState !== 'playing') return;
+        
+        const charStats = this.getCharacterStats();
+        let currentSpeed = this.speed * (this.powerups.sprint.active ? 1.5 : 1) * charStats.speed;
+        
+        this.score += currentSpeed * 0.1;
+        this.speed = Math.min(this.maxSpeed, this.baseSpeed + this.score * 0.003);
+        
+        if (this.player.stamina < this.player.maxStamina) {
+            this.player.stamina += 0.3;
+        }
+        
+        this.updateBoss(currentSpeed);
+        this.updatePlayer();
+        this.updatePowerups();
+        this.updateObjects(currentSpeed);
+        this.checkCollisions();
+        this.checkMission();
+        this.checkAchievements();
+        this.updateUI();
+        
+        if (this.score >= 2000) {
+            this.victory();
+        }
+    }
+    
+    updateBoss(playerSpeed) {
+        if (this.score > 200 && !this.boss.active) {
+            this.boss.active = true;
+            document.getElementById('bossWarning').style.display = 'block';
+            document.getElementById('bossHpBar').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('bossWarning').style.display = 'none';
+            }, 3000);
+        }
+        
+        if (this.boss.active) {
+            const bossCatchUp = this.boss.speed * (this.difficulty === 'hard' ? 1.5 : 1);
+            this.boss.distance -= (playerSpeed - 4) * 0.05 - bossCatchUp;
+            this.boss.distance = Math.max(this.boss.minDistance, Math.min(200, this.boss.distance));
+            
+            if (this.boss.y < this.boss.targetY) {
+                this.boss.y += 3;
+            }
+            
+            if (this.boss.distance <= this.boss.minDistance + 10) {
+                this.boss.anger += this.difficulty === 'hard' ? 0.8 : this.difficulty === 'easy' ? 0.3 : 0.5;
+                if (this.boss.anger >= this.boss.maxAnger) {
+                    this.gameOver();
+                }
+            } else {
+                this.boss.anger = Math.max(0, this.boss.anger - 0.3);
+            }
+            
+            const hpPercent = 100 - (this.boss.anger / this.boss.maxAnger * 100);
+            document.getElementById('bossHpFill').style.width = hpPercent + '%';
+        }
+    }
+    
+    updatePlayer() {
+        this.player.animFrame++;
+        this.playerX += (this.targetX - this.playerX) * this.laneSwitchSpeed;
+        
+        if (this.player.jumping) {
+            this.player.jumpHeight += this.player.jumpVelocity;
+            this.player.jumpVelocity -= 0.8;
+            if (this.player.jumpHeight <= 0) {
+                this.player.jumpHeight = 0;
+                this.player.jumping = false;
+                this.createParticles(this.playerX, this.player.y, 3, '#8B7355');
+            }
+        }
+        
+        if (this.player.sliding) {
+            this.player.slideTimer--;
+            if (this.player.slideTimer <= 0) this.player.sliding = false;
+        }
+    }
+    
+    updatePowerups() {
+        Object.keys(this.powerups).forEach(key => {
+            const p = this.powerups[key];
+            if (p.active) {
+                p.time--;
+                if (p.time <= 0) {
+                    p.active = false;
+                    this.updatePowerupUI();
+                }
+            }
+        });
+    }
+    
+    activatePowerup(type) {
+        this.powerups[type].active = true;
+        this.powerups[type].time = this.powerups[type].duration;
+        this.updatePowerupUI();
+        
+        const texts = {
+            sprint: '⚡ 冲刺模式！',
+            shield: '🛡️ 无敌模式！',
+            magnet: '🧲 磁铁激活！',
+            energy: '🥤 体力恢复！'
+        };
+        this.showFloatingText(this.playerX, this.player.y - 80, texts[type], '#FFD700', 22);
+        
+        if (type === 'energy') {
+            this.player.stamina = this.player.maxStamina;
+            this.powerups.energy.active = false;
+        }
+    }
+    
+    updatePowerupUI() {
+        document.getElementById('sprintIcon').classList.toggle('active', this.powerups.sprint.active);
+        document.getElementById('shieldIcon').classList.toggle('active', this.powerups.shield.active);
+        document.getElementById('magnetIcon').classList.toggle('active', this.powerups.magnet.active);
+        document.getElementById('energyIcon').classList.toggle('active', this.powerups.energy.active);
+    }
+    
+    updateObjects(speed) {
+        const now = Date.now();
+        const settings = this.difficultySettings[this.difficulty];
+        
+        const obstacleRate = Math.max(settings.obstacleRate * 0.4, settings.obstacleRate - this.score * 0.3);
+        if (now - this.lastObstacleTime > obstacleRate) {
+            const lane = Math.floor(Math.random() * 3);
+            const types = ['desk', 'trash', 'sweeper', 'chalkboard'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            this.obstacles.push({
+                x: this.lanes[lane],
+                y: -100,
+                type: type,
+                width: 60,
+                height: type === 'desk' ? 70 : 50
+            });
+            this.lastObstacleTime = now;
+        }
+        
+        const coinRate = Math.max(300, settings.coinRate);
+        if (now - this.lastCoinTime > coinRate) {
+            const pattern = Math.random();
+            if (pattern < 0.3) {
+                const lane = Math.floor(Math.random() * 3);
+                for (let i = 0; i < 4; i++) {
+                    this.coinItems.push({
+                        x: this.lanes[lane],
+                        y: -100 - i * 45,
+                        collected: false,
+                        animOffset: Math.random() * Math.PI * 2
+                    });
+                }
+            } else if (pattern < 0.6) {
+                for (let i = 0; i < 3; i++) {
+                    this.coinItems.push({
+                        x: this.lanes[i],
+                        y: -100,
+                        collected: false,
+                        animOffset: Math.random() * Math.PI * 2
+                    });
+                }
+            } else {
+                const lane = Math.floor(Math.random() * 3);
+                this.coinItems.push({
+                    x: this.lanes[lane],
+                    y: -100,
+                    collected: false,
+                    animOffset: Math.random() * Math.PI * 2,
+                    isBig: true
+                });
+            }
+            this.lastCoinTime = now;
+        }
+        
+        if (now - this.lastPowerupTime > 12000 && Math.random() < 0.4) {
+            const lane = Math.floor(Math.random() * 3);
+            const types = ['sprint', 'shield', 'magnet', 'energy'];
+            this.powerupItems.push({
+                x: this.lanes[lane],
+                y: -100,
+                type: types[Math.floor(Math.random() * types.length)],
+                collected: false
+            });
+            this.lastPowerupTime = now;
+        }
+        
+        if (now - this.lastDecorationTime > 800) {
+            const types = ['tree', 'flower', 'building', 'flag'];
+            this.decorations.push({
+                x: Math.random() < 0.5 ? Math.random() * 80 : 920 + Math.random() * 80,
+                y: -100,
+                type: types[Math.floor(Math.random() * types.length)]
+            });
+            this.lastDecorationTime = now;
+        }
+        
+        [this.obstacles, this.coinItems, this.powerupItems, this.decorations].forEach(arr => {
+            for (let i = arr.length - 1; i >= 0; i--) {
+                arr[i].y += speed;
+                if (arr[i].y > this.height + 100) arr.splice(i, 1);
+            }
+        });
+        
+        this.coinItems.forEach(coin => {
+            coin.animOffset += 0.1;
+            if (this.powerups.magnet.active && !coin.collected) {
+                const dx = this.playerX - coin.x;
+                const dy = this.player.y - this.player.jumpHeight - coin.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 150) {
+                    coin.x += dx * 0.08;
+                    coin.y += dy * 0.08;
+                }
+            }
+        });
+        
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.5;
+            p.life--;
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+        
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            const ft = this.floatingTexts[i];
+            ft.y -= 2;
+            ft.life--;
+            ft.alpha = ft.life / 60;
+            if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+        }
+    }
+    
+    createParticles(x, y, count, color) {
+        for (let i = 0; i < count; i++) {
+            this.particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10,
+                life: 30, color: color,
+                size: Math.random() * 5 + 3
+            });
+        }
+    }
+    
+    showFloatingText(x, y, text, color, size) {
+        this.floatingTexts.push({x, y, text, color, size, life: 60, alpha: 1});
+    }
+    
+    checkCollisions() {
+        const playerBox = {
+            x: this.playerX - this.player.width / 2,
+            y: this.player.y - this.player.jumpHeight - (this.player.sliding ? 35 : 0),
+            width: this.player.width,
+            height: this.player.sliding ? 35 : this.player.height
+        };
+        
+        if (this.powerups.shield.active) {
+            playerBox.x -= 15;
+            playerBox.y -= 15;
+            playerBox.width += 30;
+            playerBox.height += 30;
+        }
+        
+        for (const obstacle of this.obstacles) {
+            const obstacleBox = {
+                x: obstacle.x - obstacle.width / 2,
+                y: obstacle.y,
+                width: obstacle.width,
+                height: obstacle.height
+            };
+            
+            if (this.rectIntersect(playerBox, obstacleBox)) {
+                if (obstacle.type === 'trash' && this.player.jumping) continue;
+                
+                if (this.powerups.shield.active) {
+                    this.powerups.shield.active = false;
+                    this.updatePowerupUI();
+                    this.showFloatingText(this.playerX, this.player.y - 50, '🛡️ 护盾保护！', '#2196F3', 22);
+                    this.createParticles(obstacle.x, obstacle.y, 10, '#2196F3');
+                    continue;
+                }
+                
+                this.speed = Math.max(3, this.speed - 2);
+                this.boss.distance -= 20;
+                this.showFloatingText(this.playerX, this.player.y - 50, '💥 减速！', '#FF0000', 24);
+                this.createParticles(this.playerX, this.player.y, 15, '#FF0000');
+                
+                const idx = this.obstacles.indexOf(obstacle);
+                if (idx > -1) this.obstacles.splice(idx, 1);
+            }
+        }
+        
+        for (const coin of this.coinItems) {
+            if (coin.collected) continue;
+            const size = coin.isBig ? 35 : 20;
+            const coinBox = {x: coin.x - size, y: coin.y - size, width: size * 2, height: size * 2};
+            
+            if (this.rectIntersect(playerBox, coinBox)) {
+                coin.collected = true;
+                const value = coin.isBig ? 5 : 1;
+                this.coins += value;
+                this.dodgeCount++;
+                
+                const now = Date.now();
+                if (now - (this.lastCoinTime || 0) < 800) {
+                    this.combo++;
+                } else {
+                    this.combo = 1;
+                }
+                this.lastCoinTime = now;
+                this.maxCombo = Math.max(this.maxCombo, this.combo);
+                
+                const bonus = Math.floor(this.combo / 5);
+                const totalValue = value + bonus;
+                
+                this.showFloatingText(coin.x, coin.y - 30,
+                    bonus > 0 ? `+${totalValue}📚 🔥x${this.combo}` : `+${totalValue}📚`,
+                    '#FFD700', coin.isBig ? 24 : 18);
+                this.createParticles(coin.x, coin.y, coin.isBig ? 12 : 8, '#FFD700');
+            }
+        }
+        
+        for (const item of this.powerupItems) {
+            if (item.collected) continue;
+            const itemBox = {x: item.x - 25, y: item.y - 25, width: 50, height: 50};
+            if (this.rectIntersect(playerBox, itemBox)) {
+                item.collected = true;
+                this.activatePowerup(item.type);
+                this.createParticles(item.x, item.y, 10, '#9C27B0');
+            }
+        }
+    }
+    
+    rectIntersect(r1, r2) {
+        return !(r2.x > r1.x + r1.width || r2.x + r2.width < r1.x ||
+                 r2.y > r1.y + r1.height || r2.y + r2.height < r1.y);
+    }
+    
+    draw() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.drawBackground();
+        this.drawDecorations();
+        this.drawRoad();
+        this.drawPowerups();
+        this.drawCoins();
+        this.drawObstacles();
+        if (this.boss.active) this.drawBoss();
+        this.drawPlayer();
+        this.drawParticles();
+        this.drawFloatingTexts();
+        if (this.powerups.shield.active) this.drawShieldEffect();
+        this.drawStaminaBar();
+    }
+    
+    drawBackground() {
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(0.5, '#E0F6FF');
+        gradient.addColorStop(1, '#98D8C8');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        for (let i = 0; i < 4; i++) {
+            const x = (i * 300 + this.groundOffset * 0.2) % (this.width + 400) - 200;
+            this.ctx.beginPath();
+            this.ctx.arc(x, 80 + Math.sin(i) * 30, 50 + i * 20, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+    }
+    
+    drawDecorations() {
+        for (const dec of this.decorations) {
+            if (dec.type === 'tree') {
+                this.ctx.fillStyle = '#8B4513';
+                this.ctx.fillRect(dec.x - 10, dec.y, 20, 60);
+                this.ctx.fillStyle = '#228B22';
+                this.ctx.beginPath();
+                this.ctx.arc(dec.x, dec.y - 10, 35, 0, Math.PI * 2);
+                this.ctx.fill();
+            } else if (dec.type === 'flower') {
+                this.ctx.fillStyle = '#FF69B4';
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * 72) * Math.PI / 180;
+                    this.ctx.beginPath();
+                    this.ctx.arc(dec.x + Math.cos(angle) * 10, dec.y + Math.sin(angle) * 10, 8, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                this.ctx.fillStyle = '#FFD700';
+                this.ctx.beginPath();
+                this.ctx.arc(dec.x, dec.y, 5, 0, Math.PI * 2);
+                this.ctx.fill();
+            } else if (dec.type === 'building') {
+                this.ctx.fillStyle = '#D3D3D3';
+                this.ctx.fillRect(dec.x - 40, dec.y - 80, 80, 120);
+                this.ctx.fillStyle = '#4682B4';
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < 2; col++) {
+                        this.ctx.fillRect(dec.x - 25 + col * 30, dec.y - 60 + row * 30, 20, 20);
+                    }
+                }
+            } else if (dec.type === 'flag') {
+                this.ctx.fillStyle = '#8B4513';
+                this.ctx.fillRect(dec.x - 2, dec.y - 60, 4, 80);
+                this.ctx.fillStyle = '#FF0000';
+                this.ctx.beginPath();
+                this.ctx.moveTo(dec.x, dec.y - 60);
+                this.ctx.lineTo(dec.x + 40, dec.y - 45);
+                this.ctx.lineTo(dec.x, dec.y - 30);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+        }
+    }
+    
+    drawRoad() {
+        this.groundOffset += this.speed;
+        
+        this.ctx.fillStyle = '#D2B48C';
+        this.ctx.fillRect(100, 0, 800, this.height);
+        
+        this.ctx.strokeStyle = '#DEB887';
+        this.ctx.lineWidth = 3;
+        for (let i = 0; i < 3; i++) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.lanes[i], 0);
+            this.ctx.lineTo(this.lanes[i], this.height);
+            this.ctx.stroke();
+        }
+        
+        this.ctx.strokeStyle = '#8B7355';
+        this.ctx.lineWidth = 6;
+        this.ctx.beginPath();
+        this.ctx.moveTo(100, 0);
+        this.ctx.lineTo(100, this.height);
+        this.ctx.moveTo(900, 0);
+        this.ctx.lineTo(900, this.height);
+        this.ctx.stroke();
+        
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        this.ctx.lineWidth = 3;
+        this.ctx.setLineDash([15, 15]);
+        for (let i = 0; i < 3; i++) {
+            const offset = this.groundOffset % 30;
+            this.ctx.beginPath();
+            for (let y = -30 + offset; y < this.height; y += 30) {
+                this.ctx.moveTo(this.lanes[i], y);
+                this.ctx.lineTo(this.lanes[i], y + 15);
+            }
+            this.ctx.stroke();
+        }
+        this.ctx.setLineDash([]);
+    }
+    
+    drawBoss() {
+        const x = this.playerX;
+        const y = this.boss.y;
+        const scale = 1.2;
+        
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.scale(scale, scale);
+        
+        this.ctx.fillStyle = '#2C3E50';
+        this.ctx.fillRect(-35, -80, 70, 90);
+        
+        this.ctx.fillStyle = '#34495E';
+        this.ctx.beginPath();
+        this.ctx.arc(0, -100, 30, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.fillStyle = '#F5CBA7';
+        this.ctx.beginPath();
+        this.ctx.arc(0, -100, 22, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.fillStyle = '#E74C3C';
+        this.ctx.fillRect(-25, -115, 50, 8);
+        this.ctx.fillRect(-20, -125, 40, 10);
+        
+        this.ctx.fillStyle = '#FFF';
+        this.ctx.beginPath();
+        this.ctx.arc(-8, -102, 6, 0, Math.PI * 2);
+        this.ctx.arc(8, -102, 6, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.fillStyle = '#000';
+        this.ctx.beginPath();
+        this.ctx.arc(-8, -102, 3, 0, Math.PI * 2);
+        this.ctx.arc(8, -102, 3, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.strokeStyle = '#E74C3C';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(0, -95, 12, 0.2, Math.PI - 0.2);
+        this.ctx.stroke();
+        
+        this.ctx.fillStyle = '#2C3E50';
+        this.ctx.fillRect(-30, -40, 25, 50);
+        this.ctx.fillRect(5, -40, 25, 50);
+        
+        this.ctx.fillStyle = '#1A252F';
+        this.ctx.fillRect(-32, 10, 28, 15);
+        this.ctx.fillRect(4, 10, 28, 15);
+        
+        this.ctx.fillStyle = '#C0392B';
+        this.ctx.fillRect(-25, -130, 50, 8);
+        this.ctx.fillRect(-5, -145, 10, 20);
+        
+        this.ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+        this.ctx.beginPath();
+        this.ctx.arc(0, -100, 45 + Math.sin(this.player.animFrame * 0.2) * 5, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.restore();
+        
+        this.ctx.fillStyle = '#FFF';
+        this.ctx.font = 'bold 14px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('👨‍🏫 教导主任', x, y - 160);
+    }
+    
+    drawPlayer() {
+        const x = this.playerX;
+        const y = this.player.y - this.player.jumpHeight;
+        const height = this.player.sliding ? 35 : this.player.height;
+        
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        
+        if (this.player.sliding) this.ctx.translate(0, 35);
+        
+        const bounce = this.player.jumping ? 0 : Math.sin(this.player.animFrame * 0.3) * 3;
+        this.ctx.translate(0, -bounce);
+        
+        const colors = {
+            student1: { shirt: '#FF6B6B', pants: '#4ECDC4' },
+            student2: { shirt: '#FF69B4', pants: '#9370DB' },
+            athlete: { shirt: '#32CD32', pants: '#1E90FF' },
+            nerd: { shirt: '#FFF', pants: '#696969' },
+            rebel: { shirt: '#000', pants: '#8B0000' }
+        };
+        const color = colors[this.selectedCharacter] || colors.student1;
+        
+        this.ctx.fillStyle = color.shirt;
+        this.ctx.beginPath();
+        this.ctx.arc(0, -height + 12, 14, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.fillStyle = color.shirt;
+        this.ctx.fillRect(-20, -height + 25, 40, height - 25);
+        
+        this.ctx.fillStyle = color.pants;
+        if (this.player.sliding) {
+            this.ctx.fillRect(-18, -8, 15, 8);
+            this.ctx.fillRect(3, -8, 15, 8);
+        } else {
+            const legOffset = Math.sin(this.player.animFrame * 0.5) * 8;
+            this.ctx.fillRect(-16, -8, 12, 22 + legOffset);
+            this.ctx.fillRect(4, -8, 12, 22 - legOffset);
+        }
+        
+        this.ctx.fillStyle = '#FDBCB4';
+        this.ctx.beginPath();
+        this.ctx.arc(0, -height + 12, 10, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        const faces = { student1: '😄', student2: '😊', athlete: '😤', nerd: '🤓', rebel: '😎' };
+        this.ctx.font = '16px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(faces[this.selectedCharacter] || '😄', 0, -height + 18);
+        
+        if (this.selectedCharacter === 'nerd') {
+            this.ctx.strokeStyle = '#000';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(0, -height + 12, 12, 0, Math.PI, true);
+            this.ctx.stroke();
+        }
+        
+        this.ctx.restore();
+    }
+    
+    drawShieldEffect() {
+        this.ctx.strokeStyle = `rgba(33, 150, 243, ${0.3 + Math.sin(this.player.animFrame * 0.2) * 0.2})`;
+        this.ctx.lineWidth = 4;
+        this.ctx.beginPath();
+        this.ctx.arc(this.playerX, this.player.y - this.player.jumpHeight - 35, 55, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.fillStyle = 'rgba(33, 150, 243, 0.1)';
+        this.ctx.fill();
+    }
+    
+    drawStaminaBar() {
+        const barWidth = 150;
+        const barHeight = 12;
+        const x = this.playerX - barWidth / 2;
+        const y = this.player.y + 20;
+        
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(x, y, barWidth, barHeight);
+        
+        const staminaPercent = this.player.stamina / this.player.maxStamina;
+        const color = staminaPercent > 0.6 ? '#4CAF50' : staminaPercent > 0.3 ? '#FFC107' : '#F44336';
+        
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x, y, barWidth * staminaPercent, barHeight);
+        
+        this.ctx.strokeStyle = '#FFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(x, y, barWidth, barHeight);
+    }
+    
+    drawObstacles() {
+        for (const obs of this.obstacles) {
+            const x = obs.x;
+            const y = obs.y;
+            
+            if (obs.type === 'desk') {
+                this.ctx.fillStyle = '#8B4513';
+                this.ctx.fillRect(x - 35, y + 20, 70, 50);
+                this.ctx.fillStyle = '#A0522D';
+                this.ctx.fillRect(x - 30, y + 25, 60, 40);
+                this.ctx.fillStyle = '#654321';
+                this.ctx.fillRect(x - 5, y, 10, 20);
+            } else if (obs.type === 'trash') {
+                this.ctx.fillStyle = '#2E7D32';
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - 25, y + 50);
+                this.ctx.lineTo(x - 20, y);
+                this.ctx.lineTo(x + 20, y);
+                this.ctx.lineTo(x + 25, y + 50);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.fillStyle = '#1B5E20';
+                this.ctx.fillRect(x - 22, y + 10, 44, 8);
+                this.ctx.fillRect(x - 22, y + 25, 44, 8);
+            } else if (obs.type === 'sweeper') {
+                this.ctx.fillStyle = '#8D6E63';
+                this.ctx.fillRect(x - 3, y, 6, 60);
+                this.ctx.fillStyle = '#D7CCC8';
+                this.ctx.beginPath();
+                this.ctx.arc(x, y + 60, 20, 0, Math.PI, false);
+                this.ctx.fill();
+                this.ctx.fillStyle = '#A1887F';
+                this.ctx.fillRect(x - 15, y + 55, 30, 10);
+            } else if (obs.type === 'chalkboard') {
+                this.ctx.fillStyle = '#5D4037';
+                this.ctx.fillRect(x - 40, y, 80, 60);
+                this.ctx.fillStyle = '#1B5E20';
+                this.ctx.fillRect(x - 35, y + 5, 70, 45);
+                this.ctx.fillStyle = '#FFF';
+                this.ctx.font = '12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('数学', x, y + 30);
+                this.ctx.fillStyle = '#8D6E63';
+                this.ctx.fillRect(x - 40, y + 55, 80, 8);
+            }
+        }
+    }
+    
+    drawCoins() {
+        for (const coin of this.coinItems) {
+            if (coin.collected) continue;
+            const scale = coin.isBig ? 1.4 : 1;
+            const pulse = 1 + Math.sin(coin.animOffset) * 0.1;
+            
+            this.ctx.save();
+            this.ctx.translate(coin.x, coin.y);
+            this.ctx.scale(scale * pulse, scale * pulse);
+            
+            this.ctx.fillStyle = '#FFF';
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, coin.isBig ? 22 : 14, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            this.ctx.fillStyle = '#1976D2';
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, coin.isBig ? 18 : 11, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            this.ctx.fillStyle = '#FFF';
+            this.ctx.font = `bold ${coin.isBig ? 20 : 14}px Arial`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('📚', 0, 1);
+            
+            this.ctx.restore();
+        }
+    }
+    
+    drawPowerups() {
+        for (const item of this.powerupItems) {
+            if (item.collected) continue;
+            const pulse = 1 + Math.sin(Date.now() * 0.005) * 0.15;
+            
+            this.ctx.save();
+            this.ctx.translate(item.x, item.y);
+            this.ctx.scale(pulse, pulse);
+            
+            const icons = { sprint: '⚡', shield: '🛡️', magnet: '🧲', energy: '🥤' };
+            const colors = { sprint: '#FF5722', shield: '#2196F3', magnet: '#9C27B0', energy: '#4CAF50' };
+            
+            this.ctx.fillStyle = colors[item.type];
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, 25, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            this.ctx.fillStyle = '#FFF';
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, 20, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            this.ctx.font = 'bold 24px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(icons[item.type], 0, 2);
+            
+            this.ctx.restore();
+        }
+    }
+    
+    drawParticles() {
+        for (const p of this.particles) {
+            this.ctx.fillStyle = p.color;
+            this.ctx.globalAlpha = p.life / 30;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        this.ctx.globalAlpha = 1;
+    }
+    
+    drawFloatingTexts() {
+        for (const ft of this.floatingTexts) {
+            this.ctx.save();
+            this.ctx.globalAlpha = ft.alpha;
+            this.ctx.fillStyle = ft.color;
+            this.ctx.font = `bold ${ft.size}px Arial`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.shadowBlur = 4;
+            this.ctx.fillText(ft.text, ft.x, ft.y);
+            this.ctx.restore();
+        }
+    }
+    
+    updateUI() {
+        document.getElementById('score').textContent = Math.floor(this.score);
+        document.getElementById('coins').textContent = this.coins;
+        document.getElementById('bossDistance').textContent = Math.floor(this.boss.distance);
+    }
+    
+    gameLoop() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.gameLoop());
+    }
+}
+
+const game = new SchoolEscapeGame();
+    </script>
+</body>
+</html>
